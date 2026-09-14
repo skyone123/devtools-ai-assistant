@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <div id="app">
+    <div id="context-bar">
+      <label class="ctx-toggle">
+        <input type="checkbox" id="ctx-network" checked>
+        <span class="ctx-label">Network</span>
+        <span class="ctx-count" id="ctx-network-count">0</span>
+      </label>
+      <label class="ctx-toggle">
+        <input type="checkbox" id="ctx-console" checked>
+        <span class="ctx-label">Console</span>
+        <span class="ctx-count" id="ctx-console-count">0</span>
+      </label>
+      <label class="ctx-toggle">
+        <input type="checkbox" id="ctx-dom" checked>
+        <span class="ctx-label">DOM/CSS</span>
+      </label>
+      <div class="spacer"></div>
+      <button id="clear-chat" title="Clear conversation">Clear</button>
+    </div>
+
+    <div id="conversation">
+      <div class="welcome-message">
+        <p>Ask AI about network requests, console errors, or CSS issues on this page.</p>
+        <p class="hint">Configure your model in the extension options page.</p>
+      </div>
+    </div>
+
+    <div id="input-bar">
+      <textarea id="input" placeholder="Ask about errors, requests, styling issues..." rows="2"></textarea>
+      <button id="send" disabled>Send</button>
+    </div>
+  </div>
+  <script src="panel.js"></script>
+</body>
+</html>

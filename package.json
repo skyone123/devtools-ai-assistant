@@ -1,0 +1,21 @@
+{
+  "name": "devtools-ai-assistant",
+  "version": "0.1.0",
+  "description": "Custom AI assistant for Chrome DevTools — use your own model to debug Network, Console, and CSS.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dompurify": "^3.2.6",
+    "marked": "^15.0.7"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.304",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.7.3"
+  },
+  "packageManager": "pnpm@10.33.2"
+}

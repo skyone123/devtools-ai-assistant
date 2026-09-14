@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "DevTools AI Assistant",
+  "version": "0.1.0",
+  "description": "Custom AI assistant for Chrome DevTools — use your own model to debug Network, Console, and CSS.",
+  "devtools_page": "devtools.html",
+  "permissions": ["storage"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "options_page": "options.html",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png"
+  }
+}
