@@ -18,9 +18,6 @@ importers:
       '@types/chrome':
         specifier: ^0.0.304
         version: 0.0.304
-      '@types/dompurify':
-        specifier: ^3.2.0
-        version: 3.2.0
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2
@@ -189,10 +186,6 @@ packages:
   '@types/chrome@0.0.304':
     resolution: {integrity: sha512-ms9CLILU+FEMK7gcmgz/Mtn2E81YQWiMIzCFF8ktp98EVNIIfoqaDTD4+ailOCq1sGjbnEmfJxQ1FAsQtk5M3A==}
 
-  '@types/dompurify@3.2.0':
-    resolution: {integrity: sha512-Fgg31wv9QbLDA0SpTOXO3MaxySc4DKGLi8sna4/Utjo4r3ZRPdCt4UQee8BWr+Q5z21yifghREPJGYaEOEIACg==}
-    deprecated: This is a stub types definition. dompurify provides its own type definitions, so you do not need this installed.
-
   '@types/filesystem@0.0.36':
     resolution: {integrity: sha512-vPDXOZuannb9FZdxgHnqSwAG/jvdGM8Wq+6N4D/d80z+D4HWH+bItqsZaVRQykAn6WEVeEkLm2oQigyHtgb0RA==}
 
@@ -307,10 +300,6 @@ snapshots:
     dependencies:
       '@types/filesystem': 0.0.36
       '@types/har-format': 1.2.16
-
-  '@types/dompurify@3.2.0':
-    dependencies:
-      dompurify: 3.4.15
 
   '@types/filesystem@0.0.36':
     dependencies:
