@@ -200,6 +200,16 @@ function render() {
     msg.className = 'ai-msg';
     msg.textContent = entry.message;
 
+    item.append(head, msg);
+
+    if (entry.source) {
+      const src = document.createElement('div');
+      src.style.cssText =
+        'color:#666;font-size:10px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+      src.textContent = entry.source + (entry.line ? ':' + entry.line : '');
+      item.append(src);
+    }
+
     const actions = document.createElement('div');
     actions.className = 'ai-actions';
 
@@ -239,9 +249,19 @@ function render() {
     });
 
     actions.append(ask, close);
-    item.append(head, msg, actions);
+    item.append(actions);
     panel.appendChild(item);
   }
+}
+
+function parseSourceFromStack(stack: string | undefined): { source?: string; line?: number } {
+  if (!stack) return {};
+  const frame = stack.split('\n').find((f) => f.includes('http'));
+  if (!frame) return {};
+  const m = frame.match(/(https?:\/\/[^()\s]+?):\d+:\d+/);
+  if (!m) return {};
+  const loc = frame.match(/:(\d+):\d+/);
+  return { source: m[1], line: loc ? parseInt(loc[1], 10) : undefined };
 }
 
 window.addEventListener('error', (e) => {
@@ -250,10 +270,13 @@ window.addEventListener('error', (e) => {
 
 window.addEventListener('unhandledrejection', (e) => {
   const reason = e.reason as { message?: string; stack?: string } | undefined;
+  const parsed = parseSourceFromStack(reason?.stack);
   capture(
     'error',
     ['Unhandled Promise rejection: ' + (reason?.message !== undefined ? reason?.message : String(e.reason))],
-    reason?.stack
+    reason?.stack,
+    parsed.source,
+    parsed.line
   );
 });
 
@@ -261,12 +284,25 @@ const origConsoleError = console.error;
 const origConsoleWarn = console.warn;
 console.error = function (...args: unknown[]) {
   origConsoleError.apply(console, args as Parameters<typeof console.error>);
-  const err = args[0] instanceof Error ? args[0] : undefined;
-  capture('error', args, err?.stack);
+  const err = args.find((a) => a instanceof Error) as Error | undefined;
+  let stack = err?.stack;
+  if (!stack) {
+    const hookStack = new Error().stack || '';
+    stack = hookStack.split('\n').slice(2).join('\n') || undefined;
+  }
+  const parsed = parseSourceFromStack(stack);
+  capture('error', args, stack, parsed.source, parsed.line);
 };
 console.warn = function (...args: unknown[]) {
   origConsoleWarn.apply(console, args as Parameters<typeof console.warn>);
-  capture('warn', args);
+  const err = args.find((a) => a instanceof Error) as Error | undefined;
+  let stack = err?.stack;
+  if (!stack) {
+    const hookStack = new Error().stack || '';
+    stack = hookStack.split('\n').slice(2).join('\n') || undefined;
+  }
+  const parsed = parseSourceFromStack(stack);
+  capture('warn', args, stack, parsed.source, parsed.line);
 };
 
 if (window === window.top) {
