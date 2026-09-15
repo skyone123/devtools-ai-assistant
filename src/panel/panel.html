@@ -26,6 +26,23 @@
       <button id="clear-chat" title="Clear conversation">Clear</button>
     </div>
 
+    <div id="token-bar" hidden>
+      <span class="token-label">SHIELD</span>
+      <span id="token-info">—</span>
+      <button id="token-copy">Copy</button>
+    </div>
+
+    <div id="tools-bar">
+      <span class="tools-title">🔧 分析工具</span>
+      <button class="tool" data-tool="diff" title="同一接口两次调用的响应字段级差异">响应 Diff</button>
+      <button class="tool" data-tool="sensitive" title="扫描响应体中的密钥 / 内网 IP / PII">敏感扫描</button>
+      <button class="tool" data-tool="auth" title="哪些接口未带 Authorization">认证审计</button>
+      <button class="tool" data-tool="headers" title="CSP / HSTS / XFO 缺失检测">响应头检查</button>
+      <button class="tool" data-tool="surface" title="从 URL 推断参数与测试点（仅授权测试）">攻击面枚举</button>
+      <button class="tool" data-tool="waterfall" title="HAR 时序分析：慢请求 / 串行阻塞">性能瀑布</button>
+      <button class="tool" data-tool="mock" title="基于真实响应生成测试变体数据">Mock 生成</button>
+    </div>
+
     <div id="conversation">
       <div class="welcome-message">
         <p>Ask AI about network requests, console errors, or CSS issues on this page.</p>

@@ -8,6 +8,40 @@ const liveRequests = new Map<string, chrome.devtools.network.Request>();
 
 const FOCUS_BODY_LIMIT = 4000;
 
+const tabId = chrome.devtools.inspectedWindow.tabId;
+let overlayPort: chrome.runtime.Port | null = null;
+
+function connectOverlayProbe() {
+  try {
+    overlayPort = chrome.runtime.connect({ name: 'ai-devtools' });
+    overlayPort.onMessage.addListener(() => {
+      /* keep alive signal only */
+    });
+    overlayPort.onDisconnect.addListener(() => {
+      overlayPort = null;
+    });
+  } catch {
+    overlayPort = null;
+  }
+}
+
+function sendOverlayPing() {
+  if (!overlayPort) {
+    connectOverlayProbe();
+  }
+  try {
+    overlayPort?.postMessage({ type: 'hello', tabId });
+  } catch {
+    overlayPort?.disconnect();
+    overlayPort = null;
+    connectOverlayProbe();
+  }
+}
+
+connectOverlayProbe();
+sendOverlayPing();
+setInterval(sendOverlayPing, 5000);
+
 chrome.devtools.panels.create(
   'AI Assistant',
   'icons/icon48.png',
@@ -50,9 +84,20 @@ function dispatchAsk(question: string, focusUrl?: string, focusBody?: string) {
 }
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg && msg.type === 'jumpToSource' && typeof msg.url === 'string') {
+    try {
+      chrome.devtools.panels.openResource(msg.url, typeof msg.line === 'number' ? msg.line : 1, () => {
+        /* resource opened */
+      });
+    } catch {
+      /* may not be openable */
+    }
+    return true;
+  }
   if (msg && msg.type === 'quickAsk' && typeof msg.question === 'string') {
     showPanel();
-    return false;
+    sendResponse({ ok: true });
+    return true;
   }
   if (msg && msg.type === 'panelReady') {
     panelReady = true;

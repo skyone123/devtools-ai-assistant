@@ -1,5 +1,4 @@
-const EVT_KEY = '__aiOverlayEvent';
-
+export {};
 interface AiErrorEntry {
   level: 'error' | 'warn';
   message: string;
@@ -11,6 +10,8 @@ interface AiErrorEntry {
 }
 
 let queue: AiErrorEntry[] = [];
+let devtoolsOpen = false;
+let lastAskBtn: HTMLButtonElement | null = null;
 
 function capture(level: AiErrorEntry['level'], args: unknown[], stack?: string, source?: string, line?: number) {
   if ((window as unknown as Record<string, unknown>).__aiOverlayDisabled) return;
@@ -33,7 +34,7 @@ function capture(level: AiErrorEntry['level'], args: unknown[], stack?: string, 
     if (queue.length > 30) queue.shift();
   }
   (window as unknown as Record<string, unknown>).__aiErrors = queue;
-  render();
+  if (devtoolsOpen) render();
 }
 
 function safeStringify(o: unknown): string {
@@ -167,93 +168,177 @@ function buildShadowHost(): ShadowRoot | null {
   return shadow;
 }
 
+const MAX_VISIBLE_ITEMS = 5;
+
+function itemKey(entry: AiErrorEntry): string {
+  return entry.level + '|' + entry.message.substring(0, 120) + '|' + (entry.source || '');
+}
+
 function render() {
+  if (!devtoolsOpen) {
+    hideOverlay();
+    return;
+  }
+  if (queue.length === 0) {
+    hideOverlay();
+    return;
+  }
+
   const root = buildShadowHost();
   if (!root) return;
 
   const panel = root.querySelector<HTMLDivElement>('.ai-overlay');
   if (!panel) return;
-  panel.innerHTML = '';
 
-  for (const entry of queue.slice(-5)) {
-    const item = document.createElement('div');
-    item.className = 'ai-item';
+  const visible = queue.slice(-MAX_VISIBLE_ITEMS);
+  const present = new Set(visible.map(itemKey));
 
-    const head = document.createElement('div');
-    head.className = 'ai-head';
-
-    const level = document.createElement('span');
-    level.className = 'ai-level ' + entry.level;
-    level.textContent = entry.level;
-
-    const time = document.createElement('span');
-    time.style.color = '#666';
-    time.style.fontSize = '10px';
-    time.textContent = new Date(entry.timestamp).toLocaleTimeString();
-
-    const count = document.createElement('span');
-    count.className = 'ai-count';
-    count.textContent = entry.count > 1 ? 'x' + entry.count : '';
-
-    head.append(level, time, count);
-
-    const msg = document.createElement('div');
-    msg.className = 'ai-msg';
-    msg.textContent = entry.message;
-
-    item.append(head, msg);
-
-    if (entry.source) {
-      const src = document.createElement('div');
-      src.style.cssText =
-        'color:#666;font-size:10px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
-      src.textContent = entry.source + (entry.line ? ':' + entry.line : '');
-      item.append(src);
+  for (const child of Array.from(panel.children)) {
+    const key = (child as HTMLElement).dataset.key;
+    if (key && !present.has(key)) {
+      child.remove();
     }
+  }
 
-    const actions = document.createElement('div');
-    actions.className = 'ai-actions';
+  for (const entry of visible) {
+    const key = itemKey(entry);
+    const existing = panel.querySelector<HTMLElement>(`[data-key="${CSS.escape(key)}"]`);
+    if (existing) {
+      const countEl = existing.querySelector<HTMLSpanElement>('.ai-count');
+      if (countEl) countEl.textContent = entry.count > 1 ? 'x' + entry.count : '';
+      const timeEl = existing.querySelector<HTMLSpanElement>('.ai-time');
+      if (timeEl) timeEl.textContent = new Date(entry.timestamp).toLocaleTimeString();
+      continue;
+    }
+    panel.appendChild(buildItem(entry, key));
+  }
+}
 
-    const ask = document.createElement('button');
-    ask.className = 'ai-btn';
-    ask.textContent = 'Ask AI';
-    ask.addEventListener('click', () => {
+function buildItem(entry: AiErrorEntry, key: string): HTMLDivElement {
+  const item = document.createElement('div');
+  item.className = 'ai-item';
+  item.dataset.key = key;
+
+  const head = document.createElement('div');
+  head.className = 'ai-head';
+
+  const level = document.createElement('span');
+  level.className = 'ai-level ' + entry.level;
+  level.textContent = entry.level;
+
+  const time = document.createElement('span');
+  time.className = 'ai-time';
+  time.style.color = '#666';
+  time.style.fontSize = '10px';
+  time.textContent = new Date(entry.timestamp).toLocaleTimeString();
+
+  const count = document.createElement('span');
+  count.className = 'ai-count';
+  count.textContent = entry.count > 1 ? 'x' + entry.count : '';
+
+  head.append(level, time, count);
+
+  const msg = document.createElement('div');
+  msg.className = 'ai-msg';
+  msg.textContent = entry.message;
+
+  item.append(head, msg);
+
+  if (entry.source) {
+    const src = document.createElement('div');
+    src.style.cssText =
+      'color:#666;font-size:10px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+    src.textContent = entry.source + (entry.line ? ':' + entry.line : '');
+    item.append(src);
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'ai-actions';
+
+  const ask = document.createElement('button');
+  ask.className = 'ai-btn';
+  ask.textContent = 'Ask AI';
+  ask.addEventListener('click', () => {
+    if (lastAskBtn) return;
+    lastAskBtn = ask;
+    ask.disabled = true;
+    ask.textContent = 'Sending…';
+    try {
+      window.postMessage(
+        {
+          __aiOverlayAsk: true,
+          error: {
+            level: entry.level,
+            message: entry.message,
+            stack: entry.stack,
+            source: entry.source,
+            line: entry.line,
+            count: entry.count,
+            timestamp: entry.timestamp,
+            url: location.href,
+          },
+        },
+        '*'
+      );
+    } catch {
+      ask.disabled = false;
+      ask.textContent = 'Ask AI';
+      lastAskBtn = null;
+    }
+  });
+
+  const close = document.createElement('button');
+  close.className = 'ai-close';
+  close.textContent = '✕';
+  close.addEventListener('click', () => {
+    item.remove();
+    queue = queue.filter((e) => e !== entry);
+    (window as unknown as Record<string, unknown>).__aiErrors = queue;
+  });
+
+  actions.append(ask, close);
+
+  if (entry.source) {
+    const jump = document.createElement('button');
+    jump.className = 'ai-btn';
+    jump.textContent = 'Jump to Source';
+    actions.insertBefore(jump, ask);
+    jump.addEventListener('click', () => {
       try {
         window.postMessage(
           {
-            __aiOverlayAsk: true,
-            error: {
-              level: entry.level,
-              message: entry.message,
-              stack: entry.stack,
-              source: entry.source,
-              line: entry.line,
-              count: entry.count,
-              timestamp: entry.timestamp,
-              url: location.href,
-            },
+            __aiOverlayJump: true,
+            source: entry.source,
+            line: entry.line ?? 1,
           },
           '*'
         );
-        item.querySelector<HTMLButtonElement>('.ai-btn')!.textContent = 'Sent ✓';
       } catch {
         /* noop */
       }
     });
-
-    const close = document.createElement('button');
-    close.className = 'ai-close';
-    close.textContent = '✕';
-    close.addEventListener('click', () => {
-      item.remove();
-      queue = queue.filter((e) => e !== entry);
-      (window as unknown as Record<string, unknown>).__aiErrors = queue;
-    });
-
-    actions.append(ask, close);
-    item.append(actions);
-    panel.appendChild(item);
   }
+
+  item.append(actions);
+  return item;
+}
+
+function hideOverlay() {
+  const host = document.getElementById('__ai_overlay_host');
+  if (host) host.remove();
+}
+
+function onOverlayAskStatus(status: 'ok' | 'no-devtools') {
+  if (!lastAskBtn) return;
+  lastAskBtn.disabled = false;
+  lastAskBtn.textContent = status === 'ok' ? 'Sent ✓' : 'Open DevTools';
+  setTimeout(() => {
+    if (lastAskBtn) {
+      lastAskBtn.disabled = false;
+      lastAskBtn.textContent = 'Ask AI';
+      lastAskBtn = null;
+    }
+  }, 2000);
 }
 
 function parseSourceFromStack(stack: string | undefined): { source?: string; line?: number } {
@@ -314,9 +399,24 @@ if (window === window.top) {
   }
 }
 
+window.addEventListener('message', (e) => {
+  if (e.source !== window) return;
+  const data = e.data as { __aiOverlayDevtools?: boolean; __aiOverlayAskStatus?: 'ok' | 'no-devtools' } | null;
+  if (!data || typeof data !== 'object') return;
+  if (typeof data.__aiOverlayDevtools === 'boolean') {
+    devtoolsOpen = data.__aiOverlayDevtools;
+    if (devtoolsOpen) render();
+    else hideOverlay();
+    return;
+  }
+  if (data.__aiOverlayAskStatus) {
+    onOverlayAskStatus(data.__aiOverlayAskStatus);
+  }
+});
+
 document.addEventListener('DOMContentLoaded', () => {
-  buildShadowHost();
+  render();
 });
 if (document.readyState !== 'loading') {
-  buildShadowHost();
+  render();
 }

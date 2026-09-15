@@ -105,6 +105,84 @@ function buildContextPrompt(context: CollectedContext): string {
     }
   }
 
+  if (context.analysis) {
+    const a = context.analysis;
+    if (a.diff) {
+      parts.push('## Request Response Diff');
+      const d = a.diff;
+      parts.push(`- Path: ${d.absolutePath || '(unknown)'}`);
+      parts.push(`- Identical: ${d.same ? 'yes' : 'no'}`);
+      parts.push(`- Added: ${d.addedValues} value(s), Removed: ${d.removedValues} value(s)`);
+      for (const add of d.added.slice(0, 20)) parts.push(`  + ${add.path} = ${add.to}`);
+      for (const rm of d.removed.slice(0, 20)) parts.push(`  - ${rm.path} (was ${rm.from})`);
+      for (const chg of d.changed.slice(0, 20)) parts.push(`  ~ ${chg.path}: ${chg.from} → ${chg.to}`);
+      if (d.truncated) parts.push('  (diff truncated)');
+      parts.push('');
+      parts.push('Analyze whether the backend changed its response schema between two calls. Focus on field-level changes that could break the frontend.');
+    }
+    if (a.sensitive && a.sensitive.length > 0) {
+      parts.push('## Sensitive Data Scan');
+      for (const hit of a.sensitive.slice(0, 30)) {
+        parts.push(`- [${hit.type}] ${hit.location} — ${hit.sample}`);
+        if (hit.context) parts.push(`  context: ${hit.context}`);
+      }
+      parts.push('');
+      parts.push('Rate the severity of each leak and recommend how to fix.');
+    }
+    if (a.authAudit && a.authAudit.length > 0) {
+      parts.push('## Auth Coverage Audit');
+      parts.push('Endpoints WITHOUT Authorization header:');
+      let count = 0;
+      for (const e of a.authAudit) {
+        if (!e.hasAuth) {
+          parts.push(`- ${e.method} ${e.url.split('?')[0]}${e.sensitive ? ' [sensitive]' : ''}${e.bodySent ? ' (sends body)' : ''}`);
+          if (++count >= 25) {
+            parts.push('  (more omitted)');
+            break;
+          }
+        }
+      }
+      if (count === 0) parts.push('  (none detected)');
+      parts.push('');
+      parts.push('Identify endpoints that should require auth but do not, and their risk.');
+    }
+    if (a.securityHeaders && a.securityHeaders.length > 0) {
+      const counts = { csp: 0, hsts: 0, xfo: 0, xcto: 0 };
+      for (const issue of a.securityHeaders) for (const m of issue.missing) counts[m]++;
+      parts.push('## Security Headers Audit');
+      parts.push(
+        `Missing headers across ${a.securityHeaders.length} response(s): ` +
+          `CSP=${counts.csp}, HSTS=${counts.hsts}, X-Frame-Options=${counts.xfo}, X-Content-Type-Options=${counts.xcto}`
+      );
+      for (const issue of a.securityHeaders.slice(0, 5)) {
+        parts.push(`- ${issue.url.split('?')[0]}: missing ${issue.missing.join(', ')}`);
+      }
+      parts.push('');
+      parts.push('Explain risks and remediation for the missing headers.');
+    }
+    if (a.attackSurface && a.attackSurface.length > 0) {
+      parts.push('## API Attack Surface');
+      for (const e of a.attackSurface.slice(0, 30)) {
+        const params = Array.from(e.queryParams).slice(0, 8).join(', ') || '—';
+        parts.push(`- ${e.methods.join(',')} ${e.pattern}${e.hasAuth ? '' : ' [no-auth]'} params: ${params}`);
+      }
+      parts.push('');
+      parts.push('(Authorized security testing only) Suggest IDOR / mass-assignment test points for this API surface.');
+    }
+    if (a.waterfall && a.waterfall.length > 0) {
+      parts.push('## Performance Waterfall');
+      for (const w of a.waterfall.slice(0, 30)) {
+        const t = w.timings;
+        parts.push(
+          `- ${w.method} ${w.url.split('?')[0]} ${Math.round(w.totalTime)}ms ` +
+            `(wait ${Math.round(t.wait ?? 0)}ms, dns ${Math.round(t.dns ?? 0)}ms, connect ${Math.round(t.connect ?? 0)}ms, blocked ${Math.round(t.blocked ?? 0)}ms)`
+        );
+      }
+      parts.push('');
+      parts.push('Identify slow serial requests, high TTFB, and resources that could be parallelized or merged.');
+    }
+  }
+
   return parts.join('\n');
 }
 

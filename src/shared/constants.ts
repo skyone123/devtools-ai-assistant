@@ -101,3 +101,42 @@ export const PAGE_INFO_SCRIPT = `
   };
 })()
 `;
+
+export const MAX_DIFF_VALUE_LENGTH = 120;
+export const MAX_DIFF_ENTRIES = 40;
+export const MAX_SENSITIVE_SAMPLE_LENGTH = 60;
+export const MAX_AUTH_AUDIT_ENTRIES = 120;
+export const MAX_ATTACK_SURFACE_ENTRIES = 80;
+export const MAX_WATERFALL_ENTRIES = 80;
+
+export const JWT_PATTERNS: RegExp[] = [
+  /eyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}/g,
+];
+
+export const SENSITIVE_PATTERNS: Record<
+  SensitiveTypeLink,
+  { regex: RegExp; label: string }
+> = {
+  aws_key: { regex: /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g, label: 'AWS 密钥' },
+  private_key: {
+    regex: /-----BEGIN (?:RSA |EC |OPENSSH |PGP )?PRIVATE KEY-----/g,
+    label: '私钥',
+  },
+  generic_secret: {
+    regex: /(?:"|['"\w_-]*)(?:password|passwd|pwd|secret|token|api_key|apikey|access_token|auth_token|client_secret)"?\s*[:=]\s*"([^"]{6,})"/gi,
+    label: '凭据字段',
+  },
+  jwt: {
+    regex: /eyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}/g,
+    label: 'JWT',
+  },
+  internal_ip: {
+    regex: /\b(?:10\.(?:[0-9]{1,3}\.){2}[0-9]{1,3}|192\.168\.(?:[0-9]{1,3}\.)[0-9]{1,3}|172\.(?:1[6-9]|2[0-9]|3[01])\.(?:[0-9]{1,3}\.)[0-9]{1,3})\b/g,
+    label: '内网 IP',
+  },
+  phone: { regex: /(?<!\d)1[3-9]\d{9}(?!\d)/g, label: '手机号' },
+  idcard: { regex: /(?<!\d)\d{17}[\dXx](?!\d)/g, label: '身份证' },
+  email: { regex: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, label: '邮箱' },
+};
+
+type SensitiveTypeLink = import('./types.js').SensitiveType;

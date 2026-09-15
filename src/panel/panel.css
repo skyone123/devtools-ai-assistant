@@ -112,6 +112,118 @@ html, body {
   color: var(--text-primary);
 }
 
+#tools-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.tools-title {
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0.8;
+  margin-right: 2px;
+}
+
+.tool {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 3px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.tool:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.tool:disabled {
+  opacity: 0.4;
+  cursor: wait;
+}
+
+#token-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: rgba(255, 193, 7, 0.08);
+  border-bottom: 1px solid var(--border-color);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+#token-bar[hidden] {
+  display: none;
+}
+
+#token-bar.expiring {
+  background: rgba(255, 82, 82, 0.12);
+}
+
+.token-label {
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: #ffc107;
+}
+
+#token-bar.expiring .token-label {
+  color: var(--error-color);
+}
+
+#token-info {
+  color: var(--text-secondary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#token-copy {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-family: inherit;
+}
+
+#token-copy:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.copy-btn {
+  float: right;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 1px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 10px;
+  font-family: inherit;
+  margin: 2px 0 0 6px;
+}
+
+.copy-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 #conversation {
   flex: 1;
   overflow-y: auto;
