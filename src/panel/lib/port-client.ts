@@ -10,6 +10,7 @@ export interface PortClientHandlers {
 export class PortClient {
   private port: chrome.runtime.Port | null = null;
   private handlers: PortClientHandlers;
+  private pending = false;
 
   constructor(handlers: PortClientHandlers) {
     this.handlers = handlers;
@@ -24,15 +25,21 @@ export class PortClient {
           this.handlers.onChunk(msg.content);
           break;
         case 'done':
+          this.pending = false;
           this.handlers.onDone();
           break;
         case 'error':
+          this.pending = false;
           this.handlers.onError(msg.message);
           break;
       }
     });
     this.port.onDisconnect.addListener(() => {
       this.port = null;
+      if (this.pending) {
+        this.pending = false;
+        this.handlers.onError('Background connection lost');
+      }
     });
   }
 
@@ -44,6 +51,7 @@ export class PortClient {
       this.handlers.onError('Failed to connect to background');
       return;
     }
+    this.pending = true;
     this.port.postMessage({ type: 'ask', context, question, history });
   }
 }

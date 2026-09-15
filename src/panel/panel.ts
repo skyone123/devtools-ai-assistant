@@ -199,14 +199,19 @@ async function sendMessage() {
   inputEl.value = '';
   setStreaming(true);
 
-  addUserMessage(question);
-  chatHistory.push({ role: 'user', content: question, timestamp: Date.now() });
+  try {
+    addUserMessage(question);
+    chatHistory.push({ role: 'user', content: question, timestamp: Date.now() });
 
-  currentAssistantContent = '';
-  createAssistantMessageElement();
+    currentAssistantContent = '';
+    createAssistantMessageElement();
 
-  const context = await collectContext();
-  portClient.ask(context, question, chatHistory);
+    const context = await collectContext();
+    portClient.ask(context, question, chatHistory);
+  } catch (err) {
+    showError(err instanceof Error ? err.message : String(err));
+    finalizeAssistantMessage();
+  }
 }
 
 function updateCounts() {
