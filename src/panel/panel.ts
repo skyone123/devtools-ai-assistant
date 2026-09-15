@@ -247,6 +247,22 @@ clearBtn.addEventListener('click', () => {
   conversationEl.appendChild(welcome);
 });
 
+document.querySelectorAll<HTMLButtonElement>('#templates .tpl').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    if (isStreaming) return;
+    inputEl.value = btn.dataset.q || '';
+    sendMessage();
+  });
+});
+
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg && msg.type === 'quickAsk' && typeof msg.question === 'string') {
+    if (isStreaming) return;
+    inputEl.value = msg.question;
+    sendMessage();
+  }
+});
+
 chrome.devtools.network.onRequestFinished.addListener(() => {
   ctxNetworkCount.textContent = String(networkCollector.getRequestCount());
 });

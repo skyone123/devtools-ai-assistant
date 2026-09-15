@@ -11,6 +11,7 @@ const entries = [
   { entry: 'src/background/background.ts', out: 'dist/background.js' },
   { entry: 'src/panel/panel.ts',          out: 'dist/panel.js' },
   { entry: 'src/options/options.ts',      out: 'dist/options.js' },
+  { entry: 'src/sidebar/sidebar.ts',      out: 'dist/sidebar.js' },
 ];
 
 const staticFiles = [
@@ -19,6 +20,7 @@ const staticFiles = [
   ['src/panel/panel.html',        'dist/panel.html'],
   ['src/panel/panel.css',         'dist/panel.css'],
   ['src/options/options.html',    'dist/options.html'],
+  ['src/sidebar/sidebar.html',    'dist/sidebar.html'],
 ];
 
 function copyStatic() {
