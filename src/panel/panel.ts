@@ -26,7 +26,7 @@ const ctxDom = document.getElementById('ctx-dom') as HTMLInputElement;
 const ctxNetworkCount = document.getElementById('ctx-network-count')!;
 const ctxConsoleCount = document.getElementById('ctx-console-count')!;
 
-const history: ConversationMessage[] = [];
+const chatHistory: ConversationMessage[] = [];
 let isStreaming = false;
 let currentAssistantContent = '';
 let streamingEl: HTMLDivElement | null = null;
@@ -96,7 +96,7 @@ function finalizeAssistantMessage() {
     }
   }
   if (currentAssistantContent) {
-    history.push({
+    chatHistory.push({
       role: 'assistant',
       content: currentAssistantContent,
       timestamp: Date.now(),
@@ -200,13 +200,13 @@ async function sendMessage() {
   setStreaming(true);
 
   addUserMessage(question);
-  history.push({ role: 'user', content: question, timestamp: Date.now() });
+  chatHistory.push({ role: 'user', content: question, timestamp: Date.now() });
 
   currentAssistantContent = '';
   createAssistantMessageElement();
 
   const context = await collectContext();
-  portClient.ask(context, question, history);
+  portClient.ask(context, question, chatHistory);
 }
 
 function updateCounts() {
@@ -231,7 +231,7 @@ inputEl.addEventListener('input', () => {
 });
 
 clearBtn.addEventListener('click', () => {
-  history.length = 0;
+  chatHistory.length = 0;
   conversationEl.innerHTML = '';
   welcomeRemoved = false;
   const welcome = document.createElement('div');
