@@ -32,6 +32,7 @@ function capture(level: AiErrorEntry['level'], args: unknown[], stack?: string, 
     queue.push({ level, message, stack, source, line, count: 1, timestamp: Date.now() });
     if (queue.length > 30) queue.shift();
   }
+  (window as unknown as Record<string, unknown>).__aiErrors = queue;
   render();
 }
 
@@ -246,6 +247,7 @@ function render() {
     close.addEventListener('click', () => {
       item.remove();
       queue = queue.filter((e) => e !== entry);
+      (window as unknown as Record<string, unknown>).__aiErrors = queue;
     });
 
     actions.append(ask, close);

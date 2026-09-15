@@ -13,6 +13,11 @@ export const CONSOLE_INJECT_SCRIPT = `
   if (window.__aiConsoleCaptured) return;
   window.__aiConsoleCaptured = true;
   window.__aiConsoleLog = [];
+  function pushEntry(level, msg) {
+    if (msg.length > 500) msg = msg.substring(0, 500) + '...[truncated]';
+    window.__aiConsoleLog.push({ level: level, message: msg, timestamp: new Date().toISOString() });
+    if (window.__aiConsoleLog.length > 50) window.__aiConsoleLog.shift();
+  }
   var levels = ['log', 'error', 'warn', 'info', 'debug'];
   levels.forEach(function(level) {
     var original = console[level];
@@ -24,23 +29,42 @@ export const CONSOLE_INJECT_SCRIPT = `
           return String(a);
         }
       });
-      var msg = args.join(' ');
-      if (msg.length > 500) msg = msg.substring(0, 500) + '...[truncated]';
-      window.__aiConsoleLog.push({
-        level: level,
-        message: msg,
-        timestamp: new Date().toISOString()
-      });
-      if (window.__aiConsoleLog.length > 50) {
-        window.__aiConsoleLog.shift();
-      }
+      pushEntry(level, args.join(' '));
       original.apply(console, arguments);
     };
+  });
+  window.addEventListener('error', function(e) {
+    var msg = e.message || 'Script error.';
+    if (e.filename) msg += ' [' + e.filename + ':' + e.lineno + ']';
+    pushEntry('error', msg);
+  });
+  window.addEventListener('unhandledrejection', function(e) {
+    var reason = e.reason;
+    var msg = 'Unhandled Promise rejection: ';
+    try { msg += (reason && reason.message) ? reason.message : String(reason); } catch(ex) { msg += '?'; }
+    pushEntry('error', msg);
   });
 })();
 `;
 
-export const CONSOLE_READER_SCRIPT = `(window.__aiConsoleLog || []).slice(-20)`;
+export const CONSOLE_READER_SCRIPT = `
+(function() {
+  var logs = (window.__aiConsoleLog || []).slice(-20);
+  var overlay = (window.__aiErrors || []).map(function(e) {
+    var msg = e.message;
+    if (e.source) msg += ' [' + e.source + ':' + (e.line || '?') + ']';
+    if (e.count > 1) msg += ' (x' + e.count + ')';
+    return { level: e.level, message: msg, timestamp: new Date(e.timestamp).toISOString() };
+  });
+  var seen = {};
+  var merged = [];
+  logs.concat(overlay).forEach(function(m) {
+    var key = m.level + '|' + m.message.replace(/ \\[[^\\]]*\\]( \\(x\\d+\\))?\\s*$/, '');
+    if (!seen[key]) { seen[key] = true; merged.push(m); }
+  });
+  return merged.slice(-20);
+})()
+`;
 
 export const DOM_READ_SCRIPT = `
 (function() {
