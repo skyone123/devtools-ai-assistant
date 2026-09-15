@@ -1,6 +1,6 @@
 {
   "name": "devtools-ai-assistant",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Custom AI assistant for Chrome DevTools — use your own model to debug Network, Console, and CSS.",
   "type": "module",
   "scripts": {
