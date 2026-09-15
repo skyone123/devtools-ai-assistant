@@ -6,8 +6,38 @@ const DEFAULT_SYSTEM_PROMPT =
   'You are a DevTools AI assistant. Analyze the provided debugging context ' +
   'and answer the user\'s question concisely with code examples where relevant.';
 
+const activeDevtoolsTabs = new Set<number>();
+
 function buildContextPrompt(context: CollectedContext): string {
   const parts: string[] = [];
+
+  if (context.focusEntry) {
+    const req = context.focusEntry;
+    parts.push('## Focused Request (user double-clicked this request in Network panel — full details)');
+    parts.push(`- ${req.method} ${req.url}`);
+    parts.push(`- Status: ${req.status} ${req.statusText}`);
+    parts.push(`- Duration: ${req.duration.toFixed(0)}ms, MIME: ${req.mimeType}`);
+    if (req.count > 1) parts.push(`- Occurrences: ${req.count} (showing latest)`);
+    if (req.requestHeaders.length > 0) {
+      parts.push('Request Headers:');
+      for (const h of req.requestHeaders.slice(0, 15)) {
+        parts.push(`  ${h.name}: ${h.value}`);
+      }
+    }
+    if (req.responseHeaders.length > 0) {
+      parts.push('Response Headers:');
+      for (const h of req.responseHeaders.slice(0, 15)) {
+        parts.push(`  ${h.name}: ${h.value}`);
+      }
+    }
+    if (req.responseBody) {
+      parts.push('Response Body:');
+      parts.push('```\n' + req.responseBody + '\n```');
+    } else {
+      parts.push('- (response body unavailable — may have been evicted from memory, analyze from headers and list)');
+    }
+    parts.push('');
+  }
 
   if (context.dom) {
     parts.push('## Page');
@@ -85,8 +115,26 @@ function buildMessages(
     { role: 'system', content: systemContent },
   ];
 
-  for (const msg of history) {
+  let budget = 8000;
+  const trimmed: ConversationMessage[] = [];
+  for (let i = history.length - 1; i >= 0; i--) {
+    const content = typeof history[i].content === 'string' ? history[i].content : '';
+    const cost = Math.ceil(content.length / 4);
+    if (budget - cost < 0) break;
+    budget -= cost;
+    trimmed.unshift(history[i]);
+  }
+
+  let prevRole = '';
+  for (const msg of trimmed) {
+    if (msg.role === prevRole) {
+      if (messages.length > 0 && messages[messages.length - 1].role === msg.role) {
+        messages[messages.length - 1].content += '\n\n' + msg.content;
+        continue;
+      }
+    }
     messages.push({ role: msg.role, content: msg.content });
+    prevRole = msg.role;
   }
 
   messages.push({ role: 'user', content: userContent });
@@ -168,8 +216,47 @@ async function streamChatCompletion(
 }
 
 chrome.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
-  if (port.name !== PORT_NAME) return;
+  if (port.name === PORT_NAME) {
+    handleAskPort(port);
+    return;
+  }
 
+  if (port.name === 'ai-devtools') {
+    let tabId: number | null = null;
+    port.onMessage.addListener((message: { type?: string; tabId?: number }) => {
+      if (typeof message?.tabId === 'number') {
+        tabId = message.tabId;
+      }
+      if (message?.type === 'hello' && tabId != null) {
+        activeDevtoolsTabs.add(tabId);
+      }
+      if (message?.type === 'ping' && tabId != null) {
+        activeDevtoolsTabs.add(tabId);
+      }
+    });
+    port.onDisconnect.addListener(() => {
+      if (tabId != null) {
+        activeDevtoolsTabs.delete(tabId);
+      }
+    });
+    return;
+  }
+
+  if (port.name === 'ai-overlay') {
+    const senderTabId = port.sender?.tab?.id;
+    if (senderTabId == null) return;
+    port.onMessage.addListener((message: { type?: string }) => {
+      if (message?.type === 'probe') {
+        port.postMessage({ type: 'ai-overlay-open', open: activeDevtoolsTabs.has(senderTabId) });
+      }
+    });
+    port.onDisconnect.addListener(() => {
+      /* background owns no state for overlay ports */
+    });
+  }
+});
+
+function handleAskPort(port: chrome.runtime.Port) {
   let abortController: AbortController | null = null;
 
   port.onMessage.addListener(async (message) => {
@@ -220,4 +307,4 @@ chrome.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
     abortController?.abort();
     abortController = null;
   });
-});
+}

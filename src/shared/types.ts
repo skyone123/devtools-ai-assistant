@@ -38,6 +38,7 @@ export interface CollectedContext {
   network?: NetworkContextEntry[];
   console?: ConsoleMessage[];
   dom?: DomContext;
+  focusEntry?: NetworkContextEntry;
 }
 
 export interface ConversationMessage {

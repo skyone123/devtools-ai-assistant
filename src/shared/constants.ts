@@ -5,6 +5,7 @@ export const MAX_CONSOLE_MESSAGE_LENGTH = 500;
 export const MAX_CONSOLE_ENTRIES = 20;
 export const MAX_NETWORK_ENTRIES = 60;
 export const MAX_ERROR_DETAIL_ENTRIES = 5;
+export const MAX_FOCUS_BODY_LENGTH = 4000;
 export const MAX_DOM_HTML_LENGTH = 5000;
 export const MAX_CSS_LENGTH = 2000;
 

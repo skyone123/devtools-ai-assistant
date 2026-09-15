@@ -1,4 +1,4 @@
-import { MAX_NETWORK_ENTRIES, MAX_RESPONSE_BODY_LENGTH } from '../../shared/constants.js';
+import { MAX_FOCUS_BODY_LENGTH, MAX_NETWORK_ENTRIES, MAX_RESPONSE_BODY_LENGTH } from '../../shared/constants.js';
 import type { NetworkContextEntry } from '../../shared/types.js';
 
 type ChromeRequest = {
@@ -73,6 +73,29 @@ export class NetworkCollector {
 
   hasUrl(url: string): boolean {
     return this.requests.some((r) => r.request.url === url);
+  }
+
+  async getEntryForUrl(url: string): Promise<NetworkContextEntry | null> {
+    const matches = this.requests.filter((r) => r.request.url === url);
+    if (matches.length === 0) return null;
+    const latest = matches[matches.length - 1];
+    const body = await new Promise<string | null>((resolve) => {
+      latest.getContent((content) => {
+        resolve(content || null);
+      });
+    });
+    return {
+      url: latest.request.url,
+      method: latest.request.method,
+      status: latest.response.status,
+      statusText: latest.response.statusText,
+      mimeType: latest.response.content.mimeType,
+      requestHeaders: latest.request.headers || [],
+      responseHeaders: latest.response.headers || [],
+      responseBody: body ? body.substring(0, MAX_FOCUS_BODY_LENGTH) : null,
+      duration: latest.time || 0,
+      count: matches.length,
+    };
   }
 
   async loadFromHAR(): Promise<void> {

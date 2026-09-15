@@ -1,6 +1,6 @@
 let mainPanel: chrome.devtools.panels.ExtensionPanel | null = null;
 let panelReady = false;
-let pendingAsk: string | null = null;
+let pendingAsk: { question: string; focusUrl?: string } | null = null;
 let reopeningResource = false;
 
 const requestUrls = new Set<string>();
@@ -31,12 +31,12 @@ function showPanel() {
   (mainPanel as chrome.devtools.panels.ExtensionPanel & { show?: () => void } | null)?.show?.();
 }
 
-function dispatchAsk(question: string) {
+function dispatchAsk(question: string, focusUrl?: string) {
   showPanel();
   if (panelReady) {
-    chrome.runtime.sendMessage({ type: 'quickAsk', question });
+    chrome.runtime.sendMessage({ type: 'quickAsk', question, focusUrl });
   } else {
-    pendingAsk = question;
+    pendingAsk = { question, focusUrl };
   }
 }
 
@@ -50,7 +50,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (pendingAsk) {
       const q = pendingAsk;
       pendingAsk = null;
-      setTimeout(() => chrome.runtime.sendMessage({ type: 'quickAsk', question: q }), 200);
+      setTimeout(() => chrome.runtime.sendMessage({ type: 'quickAsk', ...q }), 200);
     }
     sendResponse({ ok: true });
     return true;
@@ -63,7 +63,8 @@ chrome.devtools.panels.setOpenResourceHandler((resource) => {
   if (requestUrls.has(url)) {
     dispatchAsk(
       `详细分析这个网络请求：${url}\n\n` +
-      '请从上下文中的请求列表/错误详情定位它，说明用途、状态码含义、耗时是否正常，若有异常给出根因和修复建议。'
+      '请结合下方 Focused Request 的完整详情（响应头、响应体）分析：用途、状态码含义、耗时是否正常、响应数据是否异常，并给出结论与建议。',
+      url
     );
     return;
   }
