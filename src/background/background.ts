@@ -1,5 +1,5 @@
 import { loadConfig } from '../shared/config.js';
-import { PORT_NAME } from '../shared/constants.js';
+import { PORT_NAME, MAX_ERROR_DETAIL_ENTRIES } from '../shared/constants.js';
 import type { CollectedContext, ConversationMessage, BgToPanelMessage } from '../shared/types.js';
 
 const DEFAULT_SYSTEM_PROMPT =
@@ -24,21 +24,33 @@ function buildContextPrompt(context: CollectedContext): string {
   }
 
   if (context.network && context.network.length > 0) {
-    parts.push('## Network Requests');
+    parts.push(`## Network Requests (${context.network.length} total, captured by DevTools)`);
     for (const req of context.network) {
-      parts.push(`### ${req.method} ${req.url}`);
-      parts.push(`- Status: ${req.status} ${req.statusText}`);
-      parts.push(`- MIME: ${req.mimeType}`);
-      parts.push(`- Duration: ${req.duration.toFixed(0)}ms`);
-      if (req.requestHeaders.length > 0) {
-        parts.push('Request Headers:');
-        for (const h of req.requestHeaders.slice(0, 10)) {
-          parts.push(`  ${h.name}: ${h.value}`);
+      const isError = req.status >= 400 ? ' [ERROR]' : '';
+      parts.push(`- ${req.method} ${req.url} -> ${req.status} ${req.statusText} (${req.duration.toFixed(0)}ms, ${req.mimeType})${isError}`);
+    }
+
+    const errorReqs = context.network.filter((r) => r.status >= 400);
+    if (errorReqs.length > 0) {
+      parts.push('### Error Request Details');
+      for (const req of errorReqs.slice(-MAX_ERROR_DETAIL_ENTRIES)) {
+        parts.push(`#### ${req.method} ${req.url} (${req.status} ${req.statusText})`);
+        if (req.requestHeaders.length > 0) {
+          parts.push('Request Headers:');
+          for (const h of req.requestHeaders.slice(0, 10)) {
+            parts.push(`  ${h.name}: ${h.value}`);
+          }
         }
-      }
-      if (req.responseBody) {
-        parts.push('Response Body:');
-        parts.push('```\n' + req.responseBody + '\n```');
+        if (req.responseHeaders.length > 0) {
+          parts.push('Response Headers:');
+          for (const h of req.responseHeaders.slice(0, 10)) {
+            parts.push(`  ${h.name}: ${h.value}`);
+          }
+        }
+        if (req.responseBody) {
+          parts.push('Response Body:');
+          parts.push('```\n' + req.responseBody + '\n```');
+        }
       }
     }
   }

@@ -1,6 +1,5 @@
-import { MAX_RESPONSE_BODY_LENGTH } from '../../shared/constants.js';
+import { MAX_NETWORK_ENTRIES, MAX_RESPONSE_BODY_LENGTH } from '../../shared/constants.js';
 import type { NetworkContextEntry } from '../../shared/types.js';
-
 type ChromeRequest = {
   request: {
     url: string;
@@ -39,9 +38,7 @@ export class NetworkCollector {
   }
 
   private getTargetRequests(): ChromeRequest[] {
-    const errorEntries = this.requests.filter((r) => r.response.status >= 400);
-    const target = errorEntries.length > 0 ? errorEntries : this.requests;
-    return target.slice(-3);
+    return this.requests.slice(-MAX_NETWORK_ENTRIES);
   }
 
   async getSelectedContext(): Promise<NetworkContextEntry[]> {
@@ -50,11 +47,15 @@ export class NetworkCollector {
 
     const entries = await Promise.all(
       targets.map(async (req): Promise<NetworkContextEntry> => {
-        const body = await new Promise<string | null>((resolve) => {
-          req.getContent((content) => {
-            resolve(content || null);
+        const isError = req.response.status >= 400;
+        let body: string | null = null;
+        if (isError) {
+          body = await new Promise<string | null>((resolve) => {
+            req.getContent((content) => {
+              resolve(content || null);
+            });
           });
-        });
+        }
 
         return {
           url: req.request.url,
@@ -62,8 +63,8 @@ export class NetworkCollector {
           status: req.response.status,
           statusText: req.response.statusText,
           mimeType: req.response.content.mimeType,
-          requestHeaders: req.request.headers || [],
-          responseHeaders: req.response.headers || [],
+          requestHeaders: isError ? (req.request.headers || []) : [],
+          responseHeaders: isError ? (req.response.headers || []) : [],
           responseBody: body ? body.substring(0, MAX_RESPONSE_BODY_LENGTH) : null,
           duration: req.time || 0,
         };
