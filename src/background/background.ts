@@ -3,8 +3,7 @@ import { PORT_NAME, MAX_ERROR_DETAIL_ENTRIES } from '../shared/constants.js';
 import type { CollectedContext, ConversationMessage, BgToPanelMessage } from '../shared/types.js';
 
 const DEFAULT_SYSTEM_PROMPT =
-  'You are a DevTools AI assistant. Analyze the provided debugging context ' +
-  'and answer the user\'s question concisely with code examples where relevant.';
+  '你是 DevTools AI 调试助手。请基于提供的调试上下文分析并回答用户的问题，回答要简洁，必要时给出代码示例。';
 
 const activeDevtoolsTabs = new Set<number>();
 
@@ -118,7 +117,7 @@ function buildContextPrompt(context: CollectedContext): string {
       for (const chg of d.changed.slice(0, 20)) parts.push(`  ~ ${chg.path}: ${chg.from} → ${chg.to}`);
       if (d.truncated) parts.push('  (diff truncated)');
       parts.push('');
-      parts.push('Analyze whether the backend changed its response schema between two calls. Focus on field-level changes that could break the frontend.');
+      parts.push('请分析后端在两次调用之间是否改变了响应 schema，重点关注可能导致前端出错的字段级变化。');
     }
     if (a.sensitive && a.sensitive.length > 0) {
       parts.push('## Sensitive Data Scan');
@@ -127,7 +126,7 @@ function buildContextPrompt(context: CollectedContext): string {
         if (hit.context) parts.push(`  context: ${hit.context}`);
       }
       parts.push('');
-      parts.push('Rate the severity of each leak and recommend how to fix.');
+      parts.push('请评估每处泄露的严重程度并给出修复建议。');
     }
     if (a.authAudit && a.authAudit.length > 0) {
       parts.push('## Auth Coverage Audit');
@@ -144,7 +143,7 @@ function buildContextPrompt(context: CollectedContext): string {
       }
       if (count === 0) parts.push('  (none detected)');
       parts.push('');
-      parts.push('Identify endpoints that should require auth but do not, and their risk.');
+      parts.push('请识别哪些接口本应要求鉴权却未携带认证信息，并评估其风险。');
     }
     if (a.securityHeaders && a.securityHeaders.length > 0) {
       const counts = { csp: 0, hsts: 0, xfo: 0, xcto: 0 };
@@ -158,7 +157,7 @@ function buildContextPrompt(context: CollectedContext): string {
         parts.push(`- ${issue.url.split('?')[0]}: missing ${issue.missing.join(', ')}`);
       }
       parts.push('');
-      parts.push('Explain risks and remediation for the missing headers.');
+      parts.push('请解释这些缺失的安全响应头带来的风险，并给出修复方案。');
     }
     if (a.attackSurface && a.attackSurface.length > 0) {
       parts.push('## API Attack Surface');
@@ -167,7 +166,7 @@ function buildContextPrompt(context: CollectedContext): string {
         parts.push(`- ${e.methods.join(',')} ${e.pattern}${e.hasAuth ? '' : ' [no-auth]'} params: ${params}`);
       }
       parts.push('');
-      parts.push('(Authorized security testing only) Suggest IDOR / mass-assignment test points for this API surface.');
+      parts.push('（仅限授权安全测试）针对这个 API 攻击面，建议值得深入的 IDOR / 批量赋值等测试点，并说明理由。');
     }
     if (a.waterfall && a.waterfall.length > 0) {
       parts.push('## Performance Waterfall');
@@ -179,7 +178,7 @@ function buildContextPrompt(context: CollectedContext): string {
         );
       }
       parts.push('');
-      parts.push('Identify slow serial requests, high TTFB, and resources that could be parallelized or merged.');
+      parts.push('请找出慢的串行请求、高 TTFB、以及可以并行化或合并的资源。');
     }
   }
 

@@ -12,22 +12,22 @@ interface OverlayError {
 
 function buildQuestion(err: OverlayError): string {
   const lines: string[] = [];
-  lines.push('Explain this browser runtime error:');
+  lines.push('请解释这个浏览器运行时错误：');
   lines.push('');
-  lines.push(`- Level: ${err.level}`);
-  lines.push(`- Page: ${err.url}`);
-  if (err.source) lines.push(`- Source: ${err.source}${err.line ? ':' + err.line : ''}`);
-  lines.push(`- Message: ${err.message}`);
-  lines.push(`- Occurrences: ${err.count}`);
+  lines.push(`- 级别: ${err.level}`);
+  lines.push(`- 页面: ${err.url}`);
+  if (err.source) lines.push(`- 来源: ${err.source}${err.line ? ':' + err.line : ''}`);
+  lines.push(`- 消息: ${err.message}`);
+  lines.push(`- 出现次数: ${err.count}`);
   if (err.stack) {
     lines.push('');
-    lines.push('Stack:');
+    lines.push('堆栈:');
     lines.push('```');
     lines.push(err.stack.substring(0, 1500));
     lines.push('```');
   }
   lines.push('');
-  lines.push('Locate the root cause and provide concrete fixes.');
+  lines.push('请定位根因并给出具体的修复建议。');
   return lines.join('\n');
 }
 
