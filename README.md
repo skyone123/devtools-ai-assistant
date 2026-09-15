@@ -24,6 +24,10 @@ A Chrome DevTools panel powered by **your own model endpoint**. Analyze network 
 
 ## Install
 
+**From Releases (no tooling needed):** download `devtools-ai-assistant-vX.Y.Z.zip` from the [latest release](../../releases), unzip it, then open `chrome://extensions`, enable **Developer mode**, click **Load unpacked** and select the unzipped `devtools-ai-assistant-X.Y.Z` folder.
+
+**From source:**
+
 ```bash
 pnpm install
 pnpm build        # or: node build.mjs
