@@ -60,6 +60,10 @@ export class NetworkCollector {
     return this.requests.filter((r) => !isStaticResource(r.response.content.mimeType)).length;
   }
 
+  hasUrl(url: string): boolean {
+    return this.requests.some((r) => r.request.url === url);
+  }
+
   private getTargetRequests(): ChromeRequest[] {
     return this.requests.slice(-MAX_NETWORK_ENTRIES * 3);
   }
