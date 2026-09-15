@@ -17,6 +17,17 @@ type ChromeRequest = {
   getContent: (cb: (content: string, encoding?: string) => void) => void;
 };
 
+type ChromeHarEntry = {
+  request: { url: string; method: string; headers?: { name: string; value: string }[] };
+  response: {
+    status: number;
+    statusText?: string;
+    content?: { mimeType?: string };
+    headers?: { name: string; value: string }[];
+  };
+  time?: number;
+};
+
 const STATIC_MIME_PREFIXES = [
   'image/',
   'video/',
@@ -62,6 +73,38 @@ export class NetworkCollector {
 
   hasUrl(url: string): boolean {
     return this.requests.some((r) => r.request.url === url);
+  }
+
+  async loadFromHAR(): Promise<void> {
+    if (this.requests.length > 0) return;
+    try {
+      const har = await new Promise<{ entries?: ChromeHarEntry[] }>((resolve) => {
+        chrome.devtools.network.getHAR((result) => resolve(result));
+      });
+      const entries = har.entries || [];
+      for (const entry of entries) {
+        this.requests.push({
+          request: {
+            url: entry.request.url,
+            method: entry.request.method,
+            headers: entry.request.headers || [],
+          },
+          response: {
+            status: entry.response.status,
+            statusText: entry.response.statusText || '',
+            content: { mimeType: entry.response.content?.mimeType || '' },
+            headers: entry.response.headers || [],
+          },
+          time: entry.time || 0,
+          getContent: (cb: (content: string) => void) => cb(''),
+        });
+      }
+      if (this.requests.length > this.maxEntries) {
+        this.requests = this.requests.slice(-this.maxEntries);
+      }
+    } catch {
+      /* HAR unavailable */
+    }
   }
 
   private getTargetRequests(): ChromeRequest[] {

@@ -266,22 +266,12 @@ document.querySelectorAll<HTMLButtonElement>('#templates .tpl').forEach((btn) =>
   });
 });
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((msg) => {
   if (msg && msg.type === 'quickAsk' && typeof msg.question === 'string') {
     if (!isStreaming) {
       inputEl.value = msg.question;
       sendMessage();
     }
-    return false;
-  }
-  if (msg && msg.type === 'resourceDoubleClicked' && typeof msg.url === 'string') {
-    const found = networkCollector.hasUrl(msg.url);
-    if (found && !isStreaming) {
-      inputEl.value = `详细分析这个网络请求：${msg.url}\n\n请从上下文中的请求列表/错误详情定位它，说明用途、状态码含义、耗时是否正常，若有异常给出根因和修复建议。`;
-      sendMessage();
-    }
-    sendResponse({ handled: found });
-    return true;
   }
   return false;
 });
@@ -293,3 +283,9 @@ chrome.devtools.network.onRequestFinished.addListener(() => {
 injectConsoleCapture();
 updateCounts();
 setInterval(updateCounts, 3000);
+
+networkCollector.loadFromHAR().finally(() => {
+  updateCounts();
+});
+
+chrome.runtime.sendMessage({ type: 'panelReady' });

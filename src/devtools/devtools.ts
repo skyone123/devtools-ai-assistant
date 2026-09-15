@@ -1,4 +1,9 @@
 let mainPanel: chrome.devtools.panels.ExtensionPanel | null = null;
+let panelReady = false;
+let pendingAsk: string | null = null;
+let reopeningResource = false;
+
+const requestUrls = new Set<string>();
 
 chrome.devtools.panels.create(
   'AI Assistant',
@@ -14,54 +19,58 @@ chrome.devtools.panels.elements.createSidebarPane('AI Assistant', (sidebar) => {
   sidebar.setHeight('132px');
 });
 
-chrome.runtime.onMessage.addListener((msg) => {
-  if (msg && msg.type === 'quickAsk' && mainPanel) {
-    (mainPanel as chrome.devtools.panels.ExtensionPanel & { show?: () => void }).show?.();
+chrome.devtools.network.onRequestFinished.addListener((request) => {
+  requestUrls.add(request.request.url);
+  if (requestUrls.size > 300) {
+    const oldest = requestUrls.values().next().value;
+    if (oldest) requestUrls.delete(oldest);
   }
 });
 
-let reopeningResource = false;
+function showPanel() {
+  (mainPanel as chrome.devtools.panels.ExtensionPanel & { show?: () => void } | null)?.show?.();
+}
+
+function dispatchAsk(question: string) {
+  showPanel();
+  if (panelReady) {
+    chrome.runtime.sendMessage({ type: 'quickAsk', question });
+  } else {
+    pendingAsk = question;
+  }
+}
+
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg && msg.type === 'quickAsk' && typeof msg.question === 'string') {
+    showPanel();
+    return false;
+  }
+  if (msg && msg.type === 'panelReady') {
+    panelReady = true;
+    if (pendingAsk) {
+      const q = pendingAsk;
+      pendingAsk = null;
+      setTimeout(() => chrome.runtime.sendMessage({ type: 'quickAsk', question: q }), 200);
+    }
+    sendResponse({ ok: true });
+    return true;
+  }
+  return false;
+});
 
 chrome.devtools.panels.setOpenResourceHandler((resource) => {
   const url = resource.url;
-  chrome.runtime.sendMessage({ type: 'resourceDoubleClicked', url }, (response) => {
-    if (response?.handled) {
-      (mainPanel as chrome.devtools.panels.ExtensionPanel & { show?: () => void } | null)?.show?.();
-    } else if (!reopeningResource) {
-      reopeningResource = true;
-      chrome.devtools.panels.openResource(url, 0, () => {
-        reopeningResource = false;
-      });
-    }
-  });
-});
-
-let heartbeatPort: chrome.runtime.Port | null = null;
-try {
-  heartbeatPort = chrome.runtime.connect({ name: 'ai-devtools' });
-  heartbeatPort.postMessage({
-    type: 'hello',
-    tabId: chrome.devtools.inspectedWindow.tabId,
-  });
-} catch {
-  heartbeatPort = null;
-}
-
-chrome.devtools.network.onNavigated.addListener(() => {
-  if (heartbeatPort) {
-    try {
-      heartbeatPort.postMessage({ type: 'ping', tabId: chrome.devtools.inspectedWindow.tabId });
-    } catch {
-      heartbeatPort = null;
-    }
+  if (requestUrls.has(url)) {
+    dispatchAsk(
+      `详细分析这个网络请求：${url}\n\n` +
+      '请从上下文中的请求列表/错误详情定位它，说明用途、状态码含义、耗时是否正常，若有异常给出根因和修复建议。'
+    );
+    return;
   }
-});
-
-window.addEventListener('pagehide', () => {
-  try {
-    heartbeatPort?.disconnect();
-  } catch {
-    /* noop */
+  if (!reopeningResource) {
+    reopeningResource = true;
+    chrome.devtools.panels.openResource(url, 0, () => {
+      reopeningResource = false;
+    });
   }
-  heartbeatPort = null;
 });
