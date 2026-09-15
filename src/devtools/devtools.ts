@@ -16,6 +16,6 @@ chrome.devtools.panels.elements.createSidebarPane('AI Assistant', (sidebar) => {
 
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg && msg.type === 'quickAsk' && mainPanel) {
-    mainPanel.show();
+    (mainPanel as chrome.devtools.panels.ExtensionPanel & { show?: () => void }).show?.();
   }
 });

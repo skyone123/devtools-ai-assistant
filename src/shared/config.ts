@@ -13,7 +13,7 @@ export function getDefaultConfig(): AIConfig {
 }
 
 export async function loadConfig(): Promise<AIConfig> {
-  const stored = await chrome.storage.sync.get([
+  const stored = await chrome.storage.local.get([
     'apiEndpoint',
     'apiKey',
     'modelName',
@@ -30,7 +30,7 @@ export async function loadConfig(): Promise<AIConfig> {
 }
 
 export async function saveConfig(config: AIConfig): Promise<void> {
-  await chrome.storage.sync.set({
+  await chrome.storage.local.set({
     apiEndpoint: config.apiEndpoint,
     apiKey: config.apiKey,
     modelName: config.modelName,

@@ -19,6 +19,8 @@ import type {
 const conversationEl = document.getElementById('conversation')!;
 const inputEl = document.getElementById('input') as HTMLTextAreaElement;
 const sendBtn = document.getElementById('send') as HTMLButtonElement;
+const stopBtn = document.getElementById('stop') as HTMLButtonElement;
+const reinjectBtn = document.getElementById('reinject-console') as HTMLButtonElement;
 const clearBtn = document.getElementById('clear-chat') as HTMLButtonElement;
 const ctxNetwork = document.getElementById('ctx-network') as HTMLInputElement;
 const ctxConsole = document.getElementById('ctx-console') as HTMLInputElement;
@@ -118,6 +120,7 @@ function showError(message: string) {
 function setStreaming(streaming: boolean) {
   isStreaming = streaming;
   sendBtn.disabled = streaming || inputEl.value.trim() === '';
+  stopBtn.hidden = !streaming;
 }
 
 function injectConsoleCapture() {
@@ -224,8 +227,16 @@ function updateCounts() {
 
 sendBtn.addEventListener('click', sendMessage);
 
+stopBtn.addEventListener('click', () => {
+  portClient.abort();
+});
+
+reinjectBtn.addEventListener('click', () => {
+  chrome.devtools.inspectedWindow.reload({ injectedScript: CONSOLE_INJECT_SCRIPT });
+});
+
 inputEl.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
     e.preventDefault();
     sendMessage();
   }

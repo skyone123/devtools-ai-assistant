@@ -24,10 +24,11 @@ function buildContextPrompt(context: CollectedContext): string {
   }
 
   if (context.network && context.network.length > 0) {
-    parts.push(`## Network Requests (${context.network.length} total, captured by DevTools)`);
+    parts.push(`## Network Requests (${context.network.length} unique, static resources filtered)`);
     for (const req of context.network) {
       const isError = req.status >= 400 ? ' [ERROR]' : '';
-      parts.push(`- ${req.method} ${req.url} -> ${req.status} ${req.statusText} (${req.duration.toFixed(0)}ms, ${req.mimeType})${isError}`);
+      const countInfo = req.count > 1 ? ` x${req.count} times` : '';
+      parts.push(`- ${req.method} ${req.url} -> ${req.status} ${req.statusText} (${req.duration.toFixed(0)}ms, ${req.mimeType})${countInfo}${isError}`);
     }
 
     const errorReqs = context.network.filter((r) => r.status >= 400);
@@ -96,7 +97,8 @@ function buildMessages(
 async function streamChatCompletion(
   port: chrome.runtime.Port,
   messages: { role: string; content: string }[],
-  config: { apiEndpoint: string; apiKey: string; modelName: string; temperature: number }
+  config: { apiEndpoint: string; apiKey: string; modelName: string; temperature: number },
+  signal?: AbortSignal
 ) {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -114,6 +116,7 @@ async function streamChatCompletion(
       stream: true,
       temperature: config.temperature,
     }),
+    signal,
   });
 
   if (!response.ok) {
@@ -167,8 +170,17 @@ async function streamChatCompletion(
 chrome.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
   if (port.name !== PORT_NAME) return;
 
+  let abortController: AbortController | null = null;
+
   port.onMessage.addListener(async (message) => {
+    if (message.type === 'abort') {
+      abortController?.abort();
+      return;
+    }
     if (message.type !== 'ask') return;
+
+    abortController = new AbortController();
+    const current = abortController;
 
     try {
       const config = await loadConfig();
@@ -179,15 +191,33 @@ chrome.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
         config.systemPrompt
       );
 
-      await streamChatCompletion(port, messages, {
-        apiEndpoint: config.apiEndpoint,
-        apiKey: config.apiKey,
-        modelName: config.modelName,
-        temperature: config.temperature,
-      });
+      await streamChatCompletion(
+        port,
+        messages,
+        {
+          apiEndpoint: config.apiEndpoint,
+          apiKey: config.apiKey,
+          modelName: config.modelName,
+          temperature: config.temperature,
+        },
+        current.signal
+      );
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      port.postMessage({ type: 'error', message: errorMsg } as BgToPanelMessage);
+      if (err instanceof Error && err.name === 'AbortError') {
+        port.postMessage({ type: 'done' } as BgToPanelMessage);
+      } else {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        port.postMessage({ type: 'error', message: errorMsg } as BgToPanelMessage);
+      }
+    } finally {
+      if (abortController === current) {
+        abortController = null;
+      }
     }
+  });
+
+  port.onDisconnect.addListener(() => {
+    abortController?.abort();
+    abortController = null;
   });
 });

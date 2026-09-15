@@ -16,6 +16,7 @@ export interface NetworkContextEntry {
   responseHeaders: { name: string; value: string }[];
   responseBody: string | null;
   duration: number;
+  count: number;
 }
 
 export interface ConsoleMessage {
@@ -47,6 +48,7 @@ export interface ConversationMessage {
 
 export type PortMessage =
   | { type: 'ask'; context: CollectedContext; question: string; history: ConversationMessage[] }
+  | { type: 'abort' }
   | { type: 'chunk'; content: string }
   | { type: 'done' }
   | { type: 'error'; message: string };

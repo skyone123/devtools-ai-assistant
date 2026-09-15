@@ -12,6 +12,8 @@ const entries = [
   { entry: 'src/panel/panel.ts',          out: 'dist/panel.js' },
   { entry: 'src/options/options.ts',      out: 'dist/options.js' },
   { entry: 'src/sidebar/sidebar.ts',      out: 'dist/sidebar.js' },
+  { entry: 'src/content/overlay-main.ts',  out: 'dist/overlay-main.js', iife: true },
+  { entry: 'src/content/overlay-bridge.ts', out: 'dist/overlay-bridge.js', iife: true },
 ];
 
 const staticFiles = [
@@ -52,9 +54,10 @@ async function main() {
   copyStatic();
 
   if (isWatch) {
-    for (const { entry, out } of entries) {
+    for (const { entry, out, iife } of entries) {
       const ctx = await context({
         ...esbuildConfig,
+        ...(iife ? { format: 'iife' } : {}),
         entryPoints: [join(__dirname, entry)],
         outfile: join(__dirname, out),
       });
@@ -63,9 +66,10 @@ async function main() {
     console.log('Watching for changes...');
   } else {
     await Promise.all(
-      entries.map(({ entry, out }) =>
+      entries.map(({ entry, out, iife }) =>
         build({
           ...esbuildConfig,
+          ...(iife ? { format: 'iife' } : {}),
           entryPoints: [join(__dirname, entry)],
           outfile: join(__dirname, out),
         })

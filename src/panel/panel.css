@@ -96,6 +96,22 @@ html, body {
   color: var(--text-primary);
 }
 
+#reinject-console {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 2px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.15s;
+}
+
+#reinject-console:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
 #conversation {
   flex: 1;
   overflow-y: auto;
@@ -259,4 +275,20 @@ html, body {
 #send:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+#stop {
+  background: var(--error-color);
+  color: #fff;
+  border: none;
+  padding: 6px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  align-self: flex-end;
+}
+
+#stop:hover {
+  opacity: 0.85;
 }

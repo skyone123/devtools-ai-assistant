@@ -54,4 +54,10 @@ export class PortClient {
     this.pending = true;
     this.port.postMessage({ type: 'ask', context, question, history });
   }
+
+  abort() {
+    if (this.port && this.pending) {
+      this.port.postMessage({ type: 'abort' });
+    }
+  }
 }
