@@ -14,6 +14,7 @@ export interface NetworkContextEntry {
   mimeType: string;
   requestHeaders: { name: string; value: string }[];
   responseHeaders: { name: string; value: string }[];
+  requestBody: string | null;
   responseBody: string | null;
   duration: number;
   count: number;
@@ -23,6 +24,7 @@ export interface ConsoleMessage {
   level: 'log' | 'error' | 'warn' | 'info' | 'debug';
   message: string;
   timestamp: string;
+  stack?: string;
 }
 
 export interface DomContext {

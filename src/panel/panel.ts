@@ -195,7 +195,7 @@ async function collectContext(): Promise<CollectedContext> {
   return context;
 }
 
-async function sendMessage(focusUrl?: string) {
+async function sendMessage(focusUrl?: string, focusBody?: string) {
   const question = inputEl.value.trim();
   if (!question || isStreaming) return;
 
@@ -213,7 +213,24 @@ async function sendMessage(focusUrl?: string) {
     if (focusUrl) {
       const focus = await networkCollector.getEntryForUrl(focusUrl);
       if (focus) {
+        if (focusBody && !focus.responseBody) {
+          focus.responseBody = focusBody.substring(0, 4000);
+        }
         context.focusEntry = focus;
+      } else if (focusBody) {
+        context.focusEntry = {
+          url: focusUrl,
+          method: 'unknown',
+          status: 0,
+          statusText: '',
+          mimeType: '',
+          requestHeaders: [],
+          responseHeaders: [],
+          requestBody: null,
+          responseBody: focusBody.substring(0, 4000),
+          duration: 0,
+          count: 1,
+        };
       }
     }
     portClient.ask(context, question, chatHistory);
@@ -278,7 +295,10 @@ chrome.runtime.onMessage.addListener((msg) => {
   if (msg && msg.type === 'quickAsk' && typeof msg.question === 'string') {
     if (!isStreaming) {
       inputEl.value = msg.question;
-      sendMessage(typeof msg.focusUrl === 'string' ? msg.focusUrl : undefined);
+      sendMessage(
+        typeof msg.focusUrl === 'string' ? msg.focusUrl : undefined,
+        typeof msg.focusBody === 'string' ? msg.focusBody : undefined
+      );
     }
   }
   return false;

@@ -55,7 +55,9 @@ export const CONSOLE_READER_SCRIPT = `
     var msg = e.message;
     if (e.source) msg += ' [' + e.source + ':' + (e.line || '?') + ']';
     if (e.count > 1) msg += ' (x' + e.count + ')';
-    return { level: e.level, message: msg, timestamp: new Date(e.timestamp).toISOString() };
+    var entry = { level: e.level, message: msg, timestamp: new Date(e.timestamp).toISOString() };
+    if (e.stack) entry.stack = String(e.stack).substring(0, 1200);
+    return entry;
   });
   var seen = {};
   var merged = [];

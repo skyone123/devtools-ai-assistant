@@ -24,6 +24,10 @@ function buildContextPrompt(context: CollectedContext): string {
         parts.push(`  ${h.name}: ${h.value}`);
       }
     }
+    if (req.requestBody) {
+      parts.push('Request Body:');
+      parts.push('```\n' + req.requestBody + '\n```');
+    }
     if (req.responseHeaders.length > 0) {
       parts.push('Response Headers:');
       for (const h of req.responseHeaders.slice(0, 15)) {
@@ -72,6 +76,10 @@ function buildContextPrompt(context: CollectedContext): string {
             parts.push(`  ${h.name}: ${h.value}`);
           }
         }
+        if (req.requestBody) {
+          parts.push('Request Body:');
+          parts.push('```\n' + req.requestBody + '\n```');
+        }
         if (req.responseHeaders.length > 0) {
           parts.push('Response Headers:');
           for (const h of req.responseHeaders.slice(0, 10)) {
@@ -90,6 +98,10 @@ function buildContextPrompt(context: CollectedContext): string {
     parts.push('## Console Messages');
     for (const msg of context.console) {
       parts.push(`[${msg.level.toUpperCase()}] ${msg.message}`);
+      if (msg.stack) {
+        parts.push('Stack:');
+        parts.push('```\n' + msg.stack + '\n```');
+      }
     }
   }
 

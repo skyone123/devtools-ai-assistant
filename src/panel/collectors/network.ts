@@ -6,6 +6,7 @@ type ChromeRequest = {
     url: string;
     method: string;
     headers: { name: string; value: string }[];
+    postData?: { text?: string };
   };
   response: {
     status: number;
@@ -18,7 +19,12 @@ type ChromeRequest = {
 };
 
 type ChromeHarEntry = {
-  request: { url: string; method: string; headers?: { name: string; value: string }[] };
+  request: {
+    url: string;
+    method: string;
+    headers?: { name: string; value: string }[];
+    postData?: { text?: string };
+  };
   response: {
     status: number;
     statusText?: string;
@@ -92,6 +98,9 @@ export class NetworkCollector {
       mimeType: latest.response.content.mimeType,
       requestHeaders: latest.request.headers || [],
       responseHeaders: latest.response.headers || [],
+      requestBody: latest.request.postData?.text
+        ? latest.request.postData.text.substring(0, MAX_FOCUS_BODY_LENGTH)
+        : null,
       responseBody: body ? body.substring(0, MAX_FOCUS_BODY_LENGTH) : null,
       duration: latest.time || 0,
       count: matches.length,
@@ -111,6 +120,7 @@ export class NetworkCollector {
             url: entry.request.url,
             method: entry.request.method,
             headers: entry.request.headers || [],
+            postData: entry.request.postData,
           },
           response: {
             status: entry.response.status,
@@ -171,6 +181,10 @@ export class NetworkCollector {
         mimeType: latest.response.content.mimeType,
         requestHeaders: isError ? (latest.request.headers || []) : [],
         responseHeaders: isError ? (latest.response.headers || []) : [],
+        requestBody:
+          isError && latest.request.postData?.text
+            ? latest.request.postData.text.substring(0, MAX_RESPONSE_BODY_LENGTH)
+            : null,
         responseBody: body ? body.substring(0, MAX_RESPONSE_BODY_LENGTH) : null,
         duration: latest.time || 0,
         count: list.length,
